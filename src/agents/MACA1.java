@@ -11,27 +11,28 @@ public class MACA1 extends Agent {
 
     private final List<Bid> loadBids = new ArrayList<>();       // 负载出价列表
     private final List<Bid> generationBids = new ArrayList<>(); // 发电出价列表
+    private final List<String> remainingBidsOutput = new ArrayList<>(); // 用于存储剩余信息
     private final DecimalFormat df = new DecimalFormat("#.##");
 
     private long windowEndTime = 0; // 当前时间窗口的结束时间
     private final int WINDOW_TIME = 5000; // 时间窗口长度（毫秒）
+    private static final String SMA_AGENT = "SMA"; // SMA代理的名称
 
     @Override
     protected void setup() {
         System.out.println("MACA1 agent " + getLocalName() + " started.");
 
-        // 启动拍卖行为
+        // 启动拍卖行为和发送未匹配信息行为
         addBehaviour(new AuctionBehaviour());
+        addBehaviour(new SendRemainingBidsBehaviour()); // 添加新行为
     }
 
     /**
      * 主要拍卖逻辑
      */
     private class AuctionBehaviour extends CyclicBehaviour {
-
         @Override
         public void action() {
-            // 等待时间窗口的开启
             if (windowEndTime == 0) {
                 ACLMessage msg = receive();
                 if (msg != null) {
@@ -44,7 +45,7 @@ public class MACA1 extends Agent {
             } else {
                 if (System.currentTimeMillis() > windowEndTime) {
                     performAuction(); // 执行拍卖
-                    printRemainingBids(); // 输出余量
+                    printRemainingBids(); // 输出剩余信息
                     loadBids.clear();
                     generationBids.clear();
                     windowEndTime = 0;
@@ -99,7 +100,6 @@ public class MACA1 extends Agent {
             System.out.println("Matched: " + load.agentName + " with " + generation.agentName
                     + " | Amount: " + tradedAmount + " kW, Price: " + price + " $/kW");
 
-            // 更新剩余量
             load.remaining -= tradedAmount;
             generation.remaining -= tradedAmount;
 
@@ -110,15 +110,44 @@ public class MACA1 extends Agent {
     }
 
     /**
-     * 输出剩余的负载和发电余量
+     * 输出剩余的负载和发电余量，同时将信息存储到remainingBidsOutput
      */
     private void printRemainingBids() {
+        remainingBidsOutput.clear(); // 清空之前的存储
         System.out.println("Remaining Bids after auction:");
         for (Bid load : loadBids) {
-            System.out.println("Load Agent: " + load.agentName + ", Remaining: " + load.remaining + " kW, Price: " + load.price);
+            String output = "Load Agent: " + load.agentName + ", Remaining: " + load.remaining + " kW, Price: " + load.price;
+            System.out.println(output);
+            remainingBidsOutput.add(output);
         }
         for (Bid generation : generationBids) {
-            System.out.println("Generation Agent: " + generation.agentName + ", Remaining: " + generation.remaining + " kW, Price: " + generation.price);
+            String output = "Generation Agent: " + generation.agentName + ", Remaining: " + generation.remaining + " kW, Price: " + generation.price;
+            System.out.println(output);
+            remainingBidsOutput.add(output);
+        }
+    }
+
+    /**
+     * 新增行为：发送剩余信息到SMA
+     */
+    private class SendRemainingBidsBehaviour extends CyclicBehaviour {
+        @Override
+        public void action() {
+            if (!remainingBidsOutput.isEmpty()) {
+                ACLMessage msg = new ACLMessage(ACLMessage.INFORM);
+                msg.addReceiver(new jade.core.AID(SMA_AGENT, jade.core.AID.ISLOCALNAME));
+
+                StringBuilder contentBuilder = new StringBuilder();
+                for (String output : remainingBidsOutput) {
+                    contentBuilder.append(output).append("\n");
+                }
+                msg.setContent(contentBuilder.toString());
+                send(msg);
+                System.out.println("Remaining bids sent to SMA:\n" + msg.getContent());
+
+                remainingBidsOutput.clear(); // 清空已发送的内容
+            }
+            block(1000); // 每隔1秒检查是否有新信息需要发送
         }
     }
 
@@ -130,27 +159,19 @@ public class MACA1 extends Agent {
         double price = 0.0;
 
         try {
-            // 使用正则表达式提取数值
             String amountRegex = type.equals("Load") ? "Load: ([0-9]+(?:\\.[0-9]+)?) kW" : "Generation: ([0-9]+(?:\\.[0-9]+)?) kW";
             String priceRegex = "Price: ([0-9]+(?:\\.[0-9]+)?) \\$/kW";
 
-            // 提取量
             java.util.regex.Matcher amountMatcher = java.util.regex.Pattern.compile(amountRegex).matcher(content);
             if (amountMatcher.find()) {
                 amount = Double.parseDouble(amountMatcher.group(1));
-            } else {
-                System.err.println("Failed to parse amount for " + sender + ": " + content);
             }
 
-            // 提取价格
             java.util.regex.Matcher priceMatcher = java.util.regex.Pattern.compile(priceRegex).matcher(content);
             if (priceMatcher.find()) {
                 price = Double.parseDouble(priceMatcher.group(1));
-            } else {
-                System.err.println("Failed to parse price for " + sender + ": " + content);
             }
 
-            // 输出解析结果
             System.out.println(type + " Bid received from " + sender + " -> Amount: " + amount + " kW, Price: " + price + " $/kW");
         } catch (Exception e) {
             System.err.println("Error parsing message: " + content + " from " + sender);
@@ -160,12 +181,6 @@ public class MACA1 extends Agent {
         return new Bid(sender, amount, price);
     }
 
-
-
-
-    /**
-     * 内部类：表示出价信息
-     */
     private static class Bid {
         String agentName;
         double remaining;
