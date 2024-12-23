@@ -30,7 +30,7 @@ public class MG1_Load1 extends Agent {
 
         @Override
         protected void onTick() {
-            // 生成负载（150kW到200kW之间的随机整数）
+            // 生成负载（150kWh到200kWh之间的随机整数）
             int load = 150 + random.nextInt(51); // 51是因为upperBound是exclusive
 
             // 生成报价（11.25到12.25之间的随机两位小数）
@@ -40,13 +40,13 @@ public class MG1_Load1 extends Agent {
             // 创建消息
             ACLMessage message = new ACLMessage(ACLMessage.INFORM);
             message.addReceiver(new AID("MACA1", AID.ISLOCALNAME)); // 目标代理名为MACA1
-            message.setContent("Load: " + load + " kW, Price: " + price + " $/kW");
+            message.setContent("Load: " + load + " kWh, Price: " + price + " $/kWh");
 
             // 发送消息
             send(message);
 
             // 控制台打印日志
-            System.out.println("MG1_Load1 Sent to MACA1 -> Load: " + load + " kW, Price: " + price + " $/kW");
+            System.out.println("MG1_Load1 Sent to MACA1 -> Load: " + load + " kWh, Price: " + price + " $/kWh");
         }
     }
 }
