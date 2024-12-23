@@ -98,7 +98,7 @@ public class MACA1 extends Agent {
 
             // 输出匹配结果
             System.out.println("Matched: " + load.agentName + " with " + generation.agentName
-                    + " | Amount: " + tradedAmount + " kW, Price: " + price + " $/kW");
+                    + " | Amount: " + tradedAmount + " kWh, Price: " + price + " $/kWh");
 
             load.remaining -= tradedAmount;
             generation.remaining -= tradedAmount;
@@ -116,12 +116,12 @@ public class MACA1 extends Agent {
         remainingBidsOutput.clear(); // 清空之前的存储
         System.out.println("Remaining Bids after auction:");
         for (Bid load : loadBids) {
-            String output = "Load Agent: " + load.agentName + ", Remaining: " + load.remaining + " kW, Price: " + load.price;
+            String output = "Load Agent: " + load.agentName + ", Remaining: " + load.remaining + " kWh, Price: " + load.price;
             System.out.println(output);
             remainingBidsOutput.add(output);
         }
         for (Bid generation : generationBids) {
-            String output = "Generation Agent: " + generation.agentName + ", Remaining: " + generation.remaining + " kW, Price: " + generation.price;
+            String output = "Generation Agent: " + generation.agentName + ", Remaining: " + generation.remaining + " kWh, Price: " + generation.price;
             System.out.println(output);
             remainingBidsOutput.add(output);
         }
@@ -159,8 +159,8 @@ public class MACA1 extends Agent {
         double price = 0.0;
 
         try {
-            String amountRegex = type.equals("Load") ? "Load: ([0-9]+(?:\\.[0-9]+)?) kW" : "Generation: ([0-9]+(?:\\.[0-9]+)?) kW";
-            String priceRegex = "Price: ([0-9]+(?:\\.[0-9]+)?) \\$/kW";
+            String amountRegex = type.equals("Load") ? "Load: ([0-9]+(?:\\.[0-9]+)?) kWh" : "Generation: ([0-9]+(?:\\.[0-9]+)?) kWh";
+            String priceRegex = "Price: ([0-9]+(?:\\.[0-9]+)?) \\$/kWh";
 
             java.util.regex.Matcher amountMatcher = java.util.regex.Pattern.compile(amountRegex).matcher(content);
             if (amountMatcher.find()) {
@@ -172,7 +172,7 @@ public class MACA1 extends Agent {
                 price = Double.parseDouble(priceMatcher.group(1));
             }
 
-            System.out.println(type + " Bid received from " + sender + " -> Amount: " + amount + " kW, Price: " + price + " $/kW");
+            System.out.println(type + " Bid received from " + sender + " -> Amount: " + amount + " kWh, Price: " + price + " $/kWh");
         } catch (Exception e) {
             System.err.println("Error parsing message: " + content + " from " + sender);
             e.printStackTrace();

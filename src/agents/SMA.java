@@ -56,7 +56,7 @@ public class SMA extends Agent {
 
         try {
             // 使用正则表达式提取所有代理信息
-            Pattern pattern = Pattern.compile("Agent: ([^,]+), Remaining: ([0-9]+(?:\\.[0-9]+)?) kW, Price: ([0-9]+(?:\\.[0-9]+)?)");
+            Pattern pattern = Pattern.compile("Agent: ([^,]+), Remaining: ([0-9]+(?:\\.[0-9]+)?) kWh, Price: ([0-9]+(?:\\.[0-9]+)?)");
             Matcher matcher = pattern.matcher(content);
 
             while (matcher.find()) {
@@ -67,7 +67,7 @@ public class SMA extends Agent {
                 RemainingInfo info = new RemainingInfo(agentName, remainingAmount, price);
                 parsedInfos.add(info);
 
-                System.out.println("Parsed -> Agent: " + agentName + ", Remaining: " + remainingAmount + " kW, Price: " + price + " $/kW");
+                System.out.println("Parsed -> Agent: " + agentName + ", Remaining: " + remainingAmount + " kWh, Price: " + price + " $/kWh");
             }
 
             if (parsedInfos.isEmpty()) {
@@ -90,7 +90,7 @@ public class SMA extends Agent {
         } else {
             System.out.println("Current Remaining Bids in SMA:");
             for (RemainingInfo info : remainingBids) {
-                System.out.println("Agent: " + info.agentName + ", Remaining: " + info.remainingAmount + " kW, Price: " + info.price + " $/kW");
+                System.out.println("Agent: " + info.agentName + ", Remaining: " + info.remainingAmount + " kWh, Price: " + info.price + " $/kWh");
             }
         }
     }
