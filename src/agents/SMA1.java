@@ -7,7 +7,7 @@ import jade.lang.acl.ACLMessage;
 import java.util.*;
 import java.util.regex.*;
 
-public class SMA extends Agent {
+public class SMA1 extends Agent {
 
     private final List<RemainingInfo> remainingBids = new ArrayList<>(); // 存储未匹配的代理信息
 

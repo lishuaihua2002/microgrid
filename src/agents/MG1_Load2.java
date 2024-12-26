@@ -15,7 +15,7 @@ public class MG1_Load2 extends Agent {
         System.out.println("MG1_Load2 agent " + getLocalName() + " started.");
 
         // 定义负载行为，每10秒执行一次
-        addBehaviour(new LoadBehaviour(this, 10000)); // 10000 毫秒 = 10 秒
+        addBehaviour(new LoadBehaviour(this, 50000)); // 10000 毫秒 = 10 秒
     }
 
     /**

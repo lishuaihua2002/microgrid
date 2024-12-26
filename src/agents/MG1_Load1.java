@@ -16,7 +16,7 @@ public class MG1_Load1 extends Agent {
         System.out.println("MG1_Load1 agent " + getLocalName() + " started.");
 
         // 定义负载行为
-        addBehaviour(new LoadBehaviour(this, 10000)); // 每10秒发送一次负载数据
+        addBehaviour(new LoadBehaviour(this, 50000)); // 每10秒发送一次负载数据
     }
 
     private class LoadBehaviour extends TickerBehaviour {
