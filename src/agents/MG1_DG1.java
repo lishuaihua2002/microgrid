@@ -15,7 +15,7 @@ public class MG1_DG1 extends Agent {
         System.out.println("MG1_DG1 agent " + getLocalName() + " started.");
 
         // 添加行为，每10秒发送一次数据
-        addBehaviour(new DGBehaviour(this, 10000)); // 10000 毫秒 = 10 秒
+        addBehaviour(new DGBehaviour(this, 50000)); // 10000 毫秒 = 10 秒
     }
 
     /**
