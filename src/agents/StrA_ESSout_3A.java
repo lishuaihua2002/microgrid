@@ -7,7 +7,7 @@ import jade.lang.acl.ACLMessage;
 import java.text.DecimalFormat;
 import java.util.Random;
 
-public class StrA_ESSout_2A extends Agent {
+public class StrA_ESSout_3A extends Agent {
 
     // 属性
     private static final double CAPACITY = 30.0; // 容量 (kWh)
@@ -26,7 +26,7 @@ public class StrA_ESSout_2A extends Agent {
         Random random = new Random();
         soc = MIN_SOC + (MAX_SOC - MIN_SOC) * random.nextDouble();
 
-        System.out.println("StrA_ESSout_1A agent started.");
+        System.out.println("StrA_ESSout_3A agent started.");
         System.out.println("Initial SOC: " + df.format(soc * 100) + "%, Current Capacity: " + df.format(getCurrentCapacity()) + " kWh");
 
         // 添加行为监听来自SMA1的消息
