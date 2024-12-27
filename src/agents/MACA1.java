@@ -16,7 +16,7 @@ public class MACA1 extends Agent {
 
     private long windowEndTime = 0; // 当前时间窗口的结束时间
     private final int WINDOW_TIME = 5000; // 时间窗口长度（毫秒）
-    private static final String SMA_AGENT = "SMA"; // SMA代理的名称
+    private static final String SMA_AGENT = "SMA1"; // SMA代理的名称
 
     @Override
     protected void setup() {
