@@ -19,29 +19,36 @@ public class SMA1 extends Agent {
     protected void setup() {
         System.out.println("SMA1 agent " + getLocalName() + " started.");
 
-        // 添加行为：接收和处理来自 MACA1 的未匹配信息
-        addBehaviour(new ReceiveUnmatchedBidsBehaviour());
+        // 添加行为：接收和处理消息
+        addBehaviour(new ReceiveMessagesBehaviour());
     }
 
     /**
-     * 行为：接收并解析来自 MACA1 的未匹配出价信息
+     * 行为：接收和分类处理消息
      */
-    private class ReceiveUnmatchedBidsBehaviour extends CyclicBehaviour {
+    private class ReceiveMessagesBehaviour extends CyclicBehaviour {
 
         @Override
         public void action() {
             ACLMessage msg = receive();
             if (msg != null) {
-                if (msg.getPerformative() == ACLMessage.INFORM) {
-                    String content = msg.getContent();
-                    System.out.println("Received unmatched bid(s) from MACA1:\n" + content);
+                String sender = msg.getSender().getLocalName();
+                String content = msg.getContent();
 
-                    // 解析多条消息内容
-                    List<RemainingInfo> parsedInfos = parseMessages(content);
-                    if (!parsedInfos.isEmpty()) {
-                        remainingBids.addAll(parsedInfos);
-                        printRemainingBids();
-                        determineMarketStateAndInform(parsedInfos);
+                if (msg.getPerformative() == ACLMessage.INFORM) {
+                    // 分类处理消息
+                    if (sender.equals("MACA1")) {
+                        System.out.println("Received unmatched bid(s) from MACA1:\n" + content);
+                        List<RemainingInfo> parsedInfos = parseMessages(content);
+                        if (!parsedInfos.isEmpty()) {
+                            remainingBids.addAll(parsedInfos);
+                            printRemainingBids();
+                            determineMarketStateAndInform(parsedInfos);
+                        }
+                    } else if (sender.startsWith("StrA_ESSout")) {
+                        // 处理来自储能代理的响应消息
+                        System.out.println("Received response from " + sender + ": " + content);
+                        handleStorageAgentResponse(sender, content);
                     }
                 }
             } else {
@@ -52,14 +59,10 @@ public class SMA1 extends Agent {
 
     /**
      * 解析来自 MACA1 的多条消息内容
-     *
-     * @param content 消息内容（可能包含多条信息）
-     * @return List<RemainingInfo> 对象列表，包含代理名称、剩余量和报价
      */
     private List<RemainingInfo> parseMessages(String content) {
         List<RemainingInfo> parsedInfos = new ArrayList<>();
         try {
-            // 使用正则表达式提取所有代理信息
             Pattern pattern = Pattern.compile("Agent: ([^,]+), Remaining: ([0-9]+(?:\\.[0-9]+)?) kWh, Price: ([0-9]+(?:\\.[0-9]+)?)");
             Matcher matcher = pattern.matcher(content);
 
@@ -82,6 +85,14 @@ public class SMA1 extends Agent {
     }
 
     /**
+     * 处理来自储能代理的响应消息
+     */
+    private void handleStorageAgentResponse(String sender, String content) {
+        System.out.println("Processing response from " + sender + ": " + content);
+        // 可以在这里根据业务逻辑处理储能代理的响应
+    }
+
+    /**
      * 分析剩余信息，确定市场状态并通知储能代理
      */
     private void determineMarketStateAndInform(List<RemainingInfo> infos) {
@@ -100,14 +111,13 @@ public class SMA1 extends Agent {
 
         String marketState = deltaP > 0 ? "Surplus" : "Demand";
 
-        // 向储能代理发送市场状态
         String messageContent = String.format("Market State: %s, ΔP: %.2f kWh, Predicted Price: %.2f $/kWh",
                 marketState, deltaP, predictedPrice);
         sendToStorageAgents(messageContent);
     }
 
     /**
-     * 向 StrA_ESSout_2A 和 StrA_ESSout_3A 发送信息
+     * 向储能代理发送市场状态信息
      */
     private void sendToStorageAgents(String content) {
         String[] storageAgents = {"StrA_ESSout_2A", "StrA_ESSout_3A"};
