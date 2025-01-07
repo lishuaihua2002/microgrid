@@ -12,7 +12,7 @@ public class MG1_DG1 extends Agent {
 
     @Override
     protected void setup() {
-        System.out.println("MG1_DG1 agent " + getLocalName() + " started.");
+        System.out.println(getLocalName() + ": MG1_DG1 agent started.");
 
         // 添加行为，每10秒发送一次数据
         addBehaviour(new DGBehaviour(this, 50000)); // 10000 毫秒 = 10 秒
@@ -51,7 +51,7 @@ public class MG1_DG1 extends Agent {
             myAgent.send(message);
 
             // 控制台打印日志，显示发送者名字
-            System.out.println(senderName + " sent to MACA1 -> Generation: " + generation + " kWh, Price: " + price + " $/kWh");
+            System.out.println(getLocalName() + ": Sent to MACA1 -> Generation: " + generation + " kWh, Price: " + price + " $/kWh");
         }
     }
 }

@@ -20,7 +20,7 @@ public class MACA1 extends Agent {
 
     @Override
     protected void setup() {
-        System.out.println("MACA1 agent " + getLocalName() + " started.");
+        System.out.println(getLocalName() + ": MACA1 agent started.");
 
         // 启动拍卖行为和发送未匹配信息行为
         addBehaviour(new AuctionBehaviour());
@@ -36,7 +36,7 @@ public class MACA1 extends Agent {
             if (windowEndTime == 0) {
                 ACLMessage msg = receive();
                 if (msg != null) {
-                    System.out.println("Received first message, starting new auction cycle...");
+                    System.out.println(getLocalName() + ": Received first message, starting new auction cycle...");
                     windowEndTime = System.currentTimeMillis() + WINDOW_TIME;
                     processMessage(msg);
                 } else {
@@ -85,7 +85,7 @@ public class MACA1 extends Agent {
         loadBids.sort(Comparator.comparingDouble(b -> -b.price)); // 按出价降序
         generationBids.sort(Comparator.comparingDouble(b -> b.price)); // 按出价升序
 
-        System.out.println("Starting auction matching...");
+        System.out.println(getLocalName() + ": Starting auction matching...");
 
         while (!loadBids.isEmpty() && !generationBids.isEmpty()) {
             Bid load = loadBids.get(0);
@@ -97,7 +97,7 @@ public class MACA1 extends Agent {
             price = Double.parseDouble(df.format(price));
 
             // 输出匹配结果
-            System.out.println("Matched: " + load.agentName + " with " + generation.agentName
+            System.out.println(getLocalName() + ": Matched: " + load.agentName + " with " + generation.agentName
                     + " | Amount: " + tradedAmount + " kWh, Price: " + price + " $/kWh");
 
             load.remaining -= tradedAmount;
@@ -114,15 +114,15 @@ public class MACA1 extends Agent {
      */
     private void printRemainingBids() {
         remainingBidsOutput.clear(); // 清空之前的存储
-        System.out.println("Remaining Bids after auction:");
+        System.out.println(getLocalName() + ": Remaining Bids after auction:");
         for (Bid load : loadBids) {
             String output = "Load Agent: " + load.agentName + ", Remaining: " + load.remaining + " kWh, Price: " + load.price;
-            System.out.println(output);
+            System.out.println(getLocalName() + ": " + output);
             remainingBidsOutput.add(output);
         }
         for (Bid generation : generationBids) {
             String output = "Generation Agent: " + generation.agentName + ", Remaining: " + generation.remaining + " kWh, Price: " + generation.price;
-            System.out.println(output);
+            System.out.println(getLocalName() + ": " + output);
             remainingBidsOutput.add(output);
         }
     }
@@ -143,7 +143,7 @@ public class MACA1 extends Agent {
                 }
                 msg.setContent(contentBuilder.toString());
                 send(msg);
-                System.out.println("Remaining bids sent to SMA:\n" + msg.getContent());
+                System.out.println(getLocalName() + ": Remaining bids sent to SMA:\n" + msg.getContent());
 
                 remainingBidsOutput.clear(); // 清空已发送的内容
             }
@@ -172,9 +172,10 @@ public class MACA1 extends Agent {
                 price = Double.parseDouble(priceMatcher.group(1));
             }
 
-            System.out.println(type + " Bid received from " + sender + " -> Amount: " + amount + " kWh, Price: " + price + " $/kWh");
+            System.out.println(getLocalName() + ": " + type + " Bid received from " + sender
+                    + " -> Amount: " + amount + " kWh, Price: " + price + " $/kWh");
         } catch (Exception e) {
-            System.err.println("Error parsing message: " + content + " from " + sender);
+            System.err.println(getLocalName() + ": Error parsing message: " + content + " from " + sender);
             e.printStackTrace();
         }
 

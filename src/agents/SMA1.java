@@ -17,7 +17,7 @@ public class SMA1 extends Agent {
 
     @Override
     protected void setup() {
-        System.out.println("SMA1 agent " + getLocalName() + " started.");
+        System.out.println(getLocalName() + ": SMA1 agent started.");
 
         // 添加行为：接收和处理消息
         addBehaviour(new ReceiveMessagesBehaviour());
@@ -38,7 +38,7 @@ public class SMA1 extends Agent {
                 if (msg.getPerformative() == ACLMessage.INFORM) {
                     // 分类处理消息
                     if (sender.equals("MACA1")) {
-                        System.out.println("Received unmatched bid(s) from MACA1:\n" + content);
+                        System.out.println(getLocalName() + ": Received unmatched bid(s) from MACA1:\n" + content);
                         List<RemainingInfo> parsedInfos = parseMessages(content);
                         if (!parsedInfos.isEmpty()) {
                             remainingBids.addAll(parsedInfos);
@@ -47,7 +47,7 @@ public class SMA1 extends Agent {
                         }
                     } else if (sender.startsWith("StrA_ESSout")) {
                         // 处理来自储能代理的响应消息
-                        System.out.println("Received response from " + sender + ": " + content);
+                        System.out.println(getLocalName() + ": Received response from " + sender + ": " + content);
                         handleStorageAgentResponse(sender, content);
                     }
                 }
@@ -74,11 +74,11 @@ public class SMA1 extends Agent {
                 RemainingInfo info = new RemainingInfo(agentName, remainingAmount, price);
                 parsedInfos.add(info);
 
-                System.out.println("Parsed -> Agent: " + agentName + ", Remaining: " + remainingAmount + " kWh, Price: " + price + " $/kWh");
+                System.out.println(getLocalName() + ": Parsed -> Agent: " + agentName + ", Remaining: " + remainingAmount + " kWh, Price: " + price + " $/kWh");
             }
 
         } catch (Exception e) {
-            System.err.println("Error parsing messages: " + content);
+            System.err.println(getLocalName() + ": Error parsing messages: " + content);
             e.printStackTrace();
         }
         return parsedInfos;
@@ -88,7 +88,7 @@ public class SMA1 extends Agent {
      * 处理来自储能代理的响应消息
      */
     private void handleStorageAgentResponse(String sender, String content) {
-        System.out.println("Processing response from " + sender + ": " + content);
+        System.out.println(getLocalName() + ": Processing response from " + sender + ": " + content);
         // 可以在这里根据业务逻辑处理储能代理的响应
     }
 
@@ -128,7 +128,7 @@ public class SMA1 extends Agent {
             msg.setContent(content);
             send(msg);
 
-            System.out.println("Sent to " + agent + " -> " + content);
+            System.out.println(getLocalName() + ": Sent to " + agent + " -> " + content);
         }
     }
 
@@ -137,11 +137,11 @@ public class SMA1 extends Agent {
      */
     private void printRemainingBids() {
         if (remainingBids.isEmpty()) {
-            System.out.println("No remaining bids stored in SMA1.");
+            System.out.println(getLocalName() + ": No remaining bids stored in SMA1.");
         } else {
-            System.out.println("Current Remaining Bids in SMA1:");
+            System.out.println(getLocalName() + ": Current Remaining Bids in SMA1:");
             for (RemainingInfo info : remainingBids) {
-                System.out.println("Agent: " + info.agentName + ", Remaining: " + info.remainingAmount + " kWh, Price: " + info.price + " $/kWh");
+                System.out.println(getLocalName() + ": Agent: " + info.agentName + ", Remaining: " + info.remainingAmount + " kWh, Price: " + info.price + " $/kWh");
             }
         }
     }
