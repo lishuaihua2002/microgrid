@@ -1,6 +1,5 @@
 package agents;
 
-
 import jade.core.Agent;
 import jade.core.behaviours.TickerBehaviour;
 import jade.lang.acl.ACLMessage;
@@ -13,7 +12,7 @@ public class MG1_Load1 extends Agent {
 
     @Override
     protected void setup() {
-        System.out.println("MG1_Load1 agent " + getLocalName() + " started.");
+        System.out.println(getLocalName() + ": MG1_Load1 agent started.");
 
         // 定义负载行为
         addBehaviour(new LoadBehaviour(this, 50000)); // 每10秒发送一次负载数据
@@ -46,7 +45,7 @@ public class MG1_Load1 extends Agent {
             send(message);
 
             // 控制台打印日志
-            System.out.println("MG1_Load1 Sent to MACA1 -> Load: " + load + " kWh, Price: " + price + " $/kWh");
+            System.out.println(getLocalName() + ": Sent to MACA1 -> Load: " + load + " kWh, Price: " + price + " $/kWh");
         }
     }
 }

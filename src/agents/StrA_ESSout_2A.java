@@ -26,8 +26,9 @@ public class StrA_ESSout_2A extends Agent {
         Random random = new Random();
         soc = MIN_SOC + (MAX_SOC - MIN_SOC) * random.nextDouble();
 
-        System.out.println("StrA_ESSout_1A agent started.");
-        System.out.println("Initial SOC: " + df.format(soc * 100) + "%, Current Capacity: " + df.format(getCurrentCapacity()) + " kWh");
+        System.out.println(getLocalName() + ": StrA_ESSout_2A agent started.");
+        System.out.println(getLocalName() + ": Initial SOC: " + df.format(soc * 100)
+                + "%, Current Capacity: " + df.format(getCurrentCapacity()) + " kWh");
 
         // 添加行为监听来自SMA1的消息
         addBehaviour(new RespondToSMA1Behaviour());
@@ -78,7 +79,7 @@ public class StrA_ESSout_2A extends Agent {
             ACLMessage msg = receive();
             if (msg != null) {
                 String content = msg.getContent();
-                System.out.println("Received message from SMA1: " + content);
+                System.out.println(getLocalName() + ": Received message from SMA1: " + content);
 
                 if (content.contains("Demand")) {
                     // 外界有电量需求，计算可放电容量和放电报价
@@ -92,7 +93,7 @@ public class StrA_ESSout_2A extends Agent {
                             + df.format(dischargeBid) + " $/kWh");
                     send(response);
 
-                    System.out.println("Sent Discharge Info to SMA1 -> Discharge Capacity: "
+                    System.out.println(getLocalName() + ": Sent Discharge Info to SMA1 -> Discharge Capacity: "
                             + df.format(availableDischargeCapacity) + " kWh, Discharge Bid: "
                             + df.format(dischargeBid) + " $/kWh");
 
@@ -108,7 +109,7 @@ public class StrA_ESSout_2A extends Agent {
                             + df.format(chargeBid) + " $/kWh");
                     send(response);
 
-                    System.out.println("Sent Charge Info to SMA1 -> Charge Capacity: "
+                    System.out.println(getLocalName() + ": Sent Charge Info to SMA1 -> Charge Capacity: "
                             + df.format(availableChargeCapacity) + " kWh, Charge Bid: "
                             + df.format(chargeBid) + " $/kWh");
                 }

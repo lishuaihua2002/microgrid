@@ -12,7 +12,7 @@ public class MG1_Load2 extends Agent {
 
     @Override
     protected void setup() {
-        System.out.println("MG1_Load2 agent " + getLocalName() + " started.");
+        System.out.println(getLocalName() + ": MG1_Load2 agent started.");
 
         // 定义负载行为，每10秒执行一次
         addBehaviour(new LoadBehaviour(this, 50000)); // 10000 毫秒 = 10 秒
@@ -48,8 +48,7 @@ public class MG1_Load2 extends Agent {
             myAgent.send(message);
 
             // 控制台打印日志
-            System.out.println("MG1_Load2 Sent to MACA1 -> Load: " + load + " kWh, Price: " + price + " $/kWh");
+            System.out.println(getLocalName() + ": Sent to MACA1 -> Load: " + load + " kWh, Price: " + price + " $/kWh");
         }
     }
 }
-
