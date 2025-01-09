@@ -45,7 +45,7 @@ public class SMA1 extends Agent {
                             printRemainingBids();
                             determineMarketStateAndInform(parsedInfos);
                         }
-                    } else if (sender.startsWith("StrA_ESSout")) {
+                    } else if (sender.startsWith("StrA_ESSout") || sender.equals("StrA_ESSlocal_1")) {
                         // 处理来自储能代理的响应消息
                         System.out.println(getLocalName() + ": Received response from " + sender + ": " + content);
                         handleStorageAgentResponse(sender, content);
@@ -89,7 +89,7 @@ public class SMA1 extends Agent {
      */
     private void handleStorageAgentResponse(String sender, String content) {
         System.out.println(getLocalName() + ": Processing response from " + sender + ": " + content);
-        // 可以在这里根据业务逻辑处理储能代理的响应
+        // 根据业务逻辑处理储能代理的响应（可扩展）
     }
 
     /**
@@ -120,7 +120,7 @@ public class SMA1 extends Agent {
      * 向储能代理发送市场状态信息
      */
     private void sendToStorageAgents(String content) {
-        String[] storageAgents = {"StrA_ESSout_2A", "StrA_ESSout_3A"};
+        String[] storageAgents = {"StrA_ESSout_2A", "StrA_ESSout_3A", "StrA_ESSlocal_1"};
 
         for (String agent : storageAgents) {
             ACLMessage msg = new ACLMessage(ACLMessage.INFORM);
