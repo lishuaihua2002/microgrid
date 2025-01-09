@@ -14,6 +14,7 @@ public class StrA_ESSout_2A extends Agent {
     private static final double POWER = 10.0; // 功率 (kW)
     private static final double MAX_SOC = 1.0; // 最大SOC
     private static final double MIN_SOC = 0.1; // 最小SOC
+    private static final double MAX_CHARGE_DISCHARGE = 2.5; // 每次充放电的最大容量 (kWh)
     private double soc; // 当前充电状态 (0.1~1.0)
     private static final double ALPHA_C = 0.5; // 充电调节因子 αC
     private static final double ALPHA_D = 0.5; // 放电调节因子 αD
@@ -59,14 +60,14 @@ public class StrA_ESSout_2A extends Agent {
      * 计算当前可放电容量 (kWh)
      */
     private double getAvailableDischargeCapacity() {
-        return Math.max(0, getCurrentCapacity() - CAPACITY * MIN_SOC);
+        return Math.min(MAX_CHARGE_DISCHARGE, Math.max(0, getCurrentCapacity() - CAPACITY * MIN_SOC));
     }
 
     /**
      * 计算当前可充电容量 (kWh)
      */
     private double getAvailableChargeCapacity() {
-        return Math.max(0, CAPACITY * MAX_SOC - getCurrentCapacity());
+        return Math.min(MAX_CHARGE_DISCHARGE, Math.max(0, CAPACITY * MAX_SOC - getCurrentCapacity()));
     }
 
     /**
