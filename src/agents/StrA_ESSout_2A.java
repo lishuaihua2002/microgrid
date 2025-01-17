@@ -19,7 +19,7 @@ public class StrA_ESSout_2A extends Agent {
     private static final double ALPHA_C = 0.5; // 充电调节因子 αC
     private static final double ALPHA_D = 0.5; // 放电调节因子 αD
     private static final double DEGRADATION_COST = 0.1; // 电池寿命退化成本 Λ
-    public double StrA_ESSlocal_2A_totalProfit = 0.0; // 总利润
+
     private DecimalFormat df = new DecimalFormat("#.##");
 
     @Override
