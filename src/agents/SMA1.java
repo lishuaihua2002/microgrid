@@ -44,6 +44,7 @@ public class SMA1 extends Agent {
                         if (!parsedInfos.isEmpty()) {
                             remainingBids.addAll(parsedInfos);
                             printRemainingBids();
+                            determineMarketStateAndInform(parsedInfos);
                         }
                     } else if (sender.startsWith("StrA_ESSout") || sender.equals("StrA_ESSlocal_1")) {
                         // 收集储能代理的报价信息
@@ -63,6 +64,21 @@ public class SMA1 extends Agent {
             } else {
                 block(100);
             }
+        }
+    }
+    /**
+     * 向储能代理发送市场状态信息
+     */
+    private void sendToStorageAgents(String content) {
+        String[] storageAgents = {"StrA_ESSout_2A", "StrA_ESSout_3A"};
+
+        for (String agent : storageAgents) {
+            ACLMessage msg = new ACLMessage(ACLMessage.INFORM);
+            msg.addReceiver(getAID(agent));
+            msg.setContent(content);
+            send(msg);
+
+            System.out.println(getLocalName() + ": Sent to " + agent + " -> " + content);
         }
     }
 
@@ -141,6 +157,29 @@ public class SMA1 extends Agent {
             e.printStackTrace();
         }
         return parsedInfos;
+    }
+    /**
+     * 分析剩余信息，确定市场状态并通知储能代理
+     */
+    private void determineMarketStateAndInform(List<RemainingInfo> infos) {
+        double totalSupply = infos.stream()
+                .filter(info -> info.agentName.startsWith("MG1_DG")) // 筛选发电代理
+                .mapToDouble(info -> info.remainingAmount)
+                .sum();
+
+        double totalDemand = infos.stream()
+                .filter(info -> info.agentName.startsWith("MG1_Load")) // 筛选负载代理
+                .mapToDouble(info -> info.remainingAmount)
+                .sum();
+
+        double deltaP = totalSupply - totalDemand;
+        double predictedPrice = C0 + C1 * deltaP;
+
+        String marketState = deltaP > 0 ? "Surplus" : "Demand";
+
+        String messageContent = String.format("Market State: %s, ΔP: %.2f kWh, Predicted Price: %.2f $/kWh",
+                marketState, deltaP, predictedPrice);
+        sendToStorageAgents(messageContent);
     }
 
     /**
