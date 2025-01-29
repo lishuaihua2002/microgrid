@@ -67,6 +67,56 @@ public class SMA1 extends Agent {
         }
     }
     /**
+     * 解析来自 MACA1 的多条消息内容
+     */
+    private List<RemainingInfo> parseMessages(String content) {
+        List<RemainingInfo> parsedInfos = new ArrayList<>();
+        try {
+            Pattern pattern = Pattern.compile("Agent: ([^,]+), Remaining: ([0-9]+(?:\\.[0-9]+)?) kWh, Price: ([0-9]+(?:\\.[0-9]+)?)");
+            Matcher matcher = pattern.matcher(content);
+
+            while (matcher.find()) {
+                String agentName = matcher.group(1);
+                double remainingAmount = Double.parseDouble(matcher.group(2));
+                double price = Double.parseDouble(matcher.group(3));
+
+                RemainingInfo info = new RemainingInfo(agentName, remainingAmount, price);
+                parsedInfos.add(info);
+
+                System.out.println(getLocalName() + ": Parsed -> Agent: " + agentName + ", Remaining: " + remainingAmount + " kWh, Price: " + price + " $/kWh");
+            }
+
+        } catch (Exception e) {
+            System.err.println(getLocalName() + ": Error parsing messages: " + content);
+            e.printStackTrace();
+        }
+        return parsedInfos;
+    }
+    /**
+     * 分析剩余信息，确定市场状态并通知储能代理?
+     */
+    private void determineMarketStateAndInform(List<RemainingInfo> infos) {
+        double totalSupply = infos.stream()
+                .filter(info -> info.agentName.startsWith("MG1_DG")) // 筛选发电代理
+                .mapToDouble(info -> info.remainingAmount)
+                .sum();
+
+        double totalDemand = infos.stream()
+                .filter(info -> info.agentName.startsWith("MG1_Load")) // 筛选负载代理
+                .mapToDouble(info -> info.remainingAmount)
+                .sum();
+
+        double deltaP = totalSupply - totalDemand;
+        double predictedPrice = C0 + C1 * deltaP;
+
+        String marketState = deltaP > 0 ? "Surplus" : "Demand";
+
+        String messageContent = String.format("Market State: %s, ΔP: %.2f kWh, Predicted Price: %.2f $/kWh",
+                marketState, deltaP, predictedPrice);
+        sendToStorageAgents(messageContent);
+    }
+
+    /**
      * 向储能代理发送市场状态信息
      */
     private void sendToStorageAgents(String content) {
@@ -80,6 +130,25 @@ public class SMA1 extends Agent {
 
             System.out.println(getLocalName() + ": Sent to " + agent + " -> " + content);
         }
+    }
+    /**
+     * 解析来自储能代理的出价
+     */
+    private RemainingInfo parseStorageBid(String sender, String content) {
+        try {
+            Pattern pattern = Pattern.compile("Capacity: ([0-9]+(?:\\.[0-9]+)?) kWh, Price: ([0-9]+(?:\\.[0-9]+)?)");
+            Matcher matcher = pattern.matcher(content);
+
+            if (matcher.find()) {
+                double remainingAmount = Double.parseDouble(matcher.group(1));
+                double price = Double.parseDouble(matcher.group(2));
+                return new RemainingInfo(sender, remainingAmount, price);
+            }
+        } catch (Exception e) {
+            System.err.println(getLocalName() + ": Error parsing bid from " + sender + ": " + content);
+            e.printStackTrace();
+        }
+        return null;
     }
 
     /**
@@ -130,76 +199,6 @@ public class SMA1 extends Agent {
         // 将拍卖结果发送给储能代理和数据收集代理
         sendAuctionResultsToStorageAgents();
         sendAuctionRecordsToDataCollect(auctionRecords);
-    }
-
-    /**
-     * 解析来自 MACA1 的多条消息内容
-     */
-    private List<RemainingInfo> parseMessages(String content) {
-        List<RemainingInfo> parsedInfos = new ArrayList<>();
-        try {
-            Pattern pattern = Pattern.compile("Agent: ([^,]+), Remaining: ([0-9]+(?:\\.[0-9]+)?) kWh, Price: ([0-9]+(?:\\.[0-9]+)?)");
-            Matcher matcher = pattern.matcher(content);
-
-            while (matcher.find()) {
-                String agentName = matcher.group(1);
-                double remainingAmount = Double.parseDouble(matcher.group(2));
-                double price = Double.parseDouble(matcher.group(3));
-
-                RemainingInfo info = new RemainingInfo(agentName, remainingAmount, price);
-                parsedInfos.add(info);
-
-                System.out.println(getLocalName() + ": Parsed -> Agent: " + agentName + ", Remaining: " + remainingAmount + " kWh, Price: " + price + " $/kWh");
-            }
-
-        } catch (Exception e) {
-            System.err.println(getLocalName() + ": Error parsing messages: " + content);
-            e.printStackTrace();
-        }
-        return parsedInfos;
-    }
-    /**
-     * 分析剩余信息，确定市场状态并通知储能代理
-     */
-    private void determineMarketStateAndInform(List<RemainingInfo> infos) {
-        double totalSupply = infos.stream()
-                .filter(info -> info.agentName.startsWith("MG1_DG")) // 筛选发电代理
-                .mapToDouble(info -> info.remainingAmount)
-                .sum();
-
-        double totalDemand = infos.stream()
-                .filter(info -> info.agentName.startsWith("MG1_Load")) // 筛选负载代理
-                .mapToDouble(info -> info.remainingAmount)
-                .sum();
-
-        double deltaP = totalSupply - totalDemand;
-        double predictedPrice = C0 + C1 * deltaP;
-
-        String marketState = deltaP > 0 ? "Surplus" : "Demand";
-
-        String messageContent = String.format("Market State: %s, ΔP: %.2f kWh, Predicted Price: %.2f $/kWh",
-                marketState, deltaP, predictedPrice);
-        sendToStorageAgents(messageContent);
-    }
-
-    /**
-     * 解析来自储能代理的出价
-     */
-    private RemainingInfo parseStorageBid(String sender, String content) {
-        try {
-            Pattern pattern = Pattern.compile("Capacity: ([0-9]+(?:\\.[0-9]+)?) kWh, Price: ([0-9]+(?:\\.[0-9]+)?)");
-            Matcher matcher = pattern.matcher(content);
-
-            if (matcher.find()) {
-                double remainingAmount = Double.parseDouble(matcher.group(1));
-                double price = Double.parseDouble(matcher.group(2));
-                return new RemainingInfo(sender, remainingAmount, price);
-            }
-        } catch (Exception e) {
-            System.err.println(getLocalName() + ": Error parsing bid from " + sender + ": " + content);
-            e.printStackTrace();
-        }
-        return null;
     }
 
     /**
