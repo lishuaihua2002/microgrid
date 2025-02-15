@@ -45,9 +45,10 @@ public class MG1_DG1 extends Agent {
 
             // 创建 JSON 数据
             JSONObject jsonData = new JSONObject();
-            jsonData.put("agent", senderName);
-            jsonData.put("generation", generation);
+            jsonData.put("sender", senderName);
+            jsonData.put("amount", generation); // 统一使用 "amount"
             jsonData.put("price", price);
+            jsonData.put("type", "generation"); // 明确类型
 
             // 创建消息
             ACLMessage message = new ACLMessage(ACLMessage.INFORM);

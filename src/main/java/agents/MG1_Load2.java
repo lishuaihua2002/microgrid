@@ -1,9 +1,10 @@
-package agents; // 请确保路径与包名一致
+package agents;
 
 import jade.core.Agent;
 import jade.core.behaviours.TickerBehaviour;
 import jade.lang.acl.ACLMessage;
 import jade.core.AID;
+import org.json.JSONObject; // 导入 JSON 库
 
 import java.text.DecimalFormat;
 import java.util.Random;
@@ -14,8 +15,8 @@ public class MG1_Load2 extends Agent {
     protected void setup() {
         System.out.println(getLocalName() + ": MG1_Load2 agent started.");
 
-        // 定义负载行为，每10秒执行一次
-        addBehaviour(new LoadBehaviour(this, 50000)); // 10000 毫秒 = 10 秒
+        // 定义负载行为
+        addBehaviour(new LoadBehaviour(this, 50000)); // 每 50 秒发送一次负载数据
     }
 
     /**
@@ -39,16 +40,23 @@ public class MG1_Load2 extends Agent {
             double price = 11.25 + (random.nextDouble() * (12.25 - 11.25));
             price = Double.parseDouble(decimalFormat.format(price)); // 格式化两位小数
 
-            // 创建消息
+            // 创建 JSON 格式的数据
+            JSONObject json = new JSONObject();
+            json.put("sender", getLocalName());
+            json.put("amount", load); // 统一使用 "amount"
+            json.put("price", price);
+            json.put("type", "load"); // 明确类型
+
+            // 创建 ACL 消息
             ACLMessage message = new ACLMessage(ACLMessage.INFORM);
-            message.addReceiver(new AID("MACA1", AID.ISLOCALNAME)); // 接收方为MACA1
-            message.setContent("Load: " + load + " kWh, Price: " + price + " $/kWh");
+            message.addReceiver(new AID("MACA1", AID.ISLOCALNAME)); // 目标代理名为 MACA1
+            message.setContent(json.toString()); // 发送 JSON 格式的数据
 
             // 发送消息
             myAgent.send(message);
 
             // 控制台打印日志
-            System.out.println(getLocalName() + ": Sent to MACA1 -> Load: " + load + " kWh, Price: " + price + " $/kWh");
+            System.out.println(getLocalName() + ": Sent to MACA1 -> " + json.toString());
         }
     }
 }
