@@ -18,7 +18,7 @@ public class swingGUI {
     public swingGUI() {
         // 创建 GUI 界面
         frame = new JFrame("变量监视器");
-        frame.setSize(500, 300);
+        frame.setSize(800, 400); // 调整窗口大小
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.setLayout(new BorderLayout());
 
@@ -84,26 +84,18 @@ public class swingGUI {
         swingGUI monitor = new swingGUI();
 
         // 监视的对象（你的类实例）
+        SMA1 sma = new SMA1();
         StrA_ESSlocal_1 obj1 = new StrA_ESSlocal_1();
         StrA_ESSout_2A obj2 = new StrA_ESSout_2A();
         StrA_ESSout_3A obj3 = new StrA_ESSout_3A();
 
-        // 添加对象和变量进行监视
-        monitor.addObjectToMonitor(obj1, "StrA_ESSlocal_1_totalProfit");
-        monitor.addObjectToMonitor(obj2, "StrA_ESSout_2A_totalProfit");
-        monitor.addObjectToMonitor(obj3, "StrA_ESSout_3A_totalProfit");
-/*
-        // 模拟变量变化
-        new Timer().scheduleAtFixedRate(new TimerTask() {
-            @Override
-            public void run() {
-                obj1.updateProfit();
-                obj2.updateProfit();
-                obj3.updateProfit();
-            }
-        }, 0, 2000); // 每 2 秒变化一次
- **/
+        // 添加 SMA1 的拍卖结果变量进行监视
+        monitor.addObjectToMonitor(sma, "auctionResults");
+
+        // 添加储能代理的电量、报价和利润变量进行监视
+        monitor.addObjectToMonitor(obj1, "soc", "totalProfit", "chargeBid", "dischargeBid");
+        monitor.addObjectToMonitor(obj2, "soc", "totalProfit", "chargeBid", "dischargeBid");
+        monitor.addObjectToMonitor(obj3, "soc", "totalProfit", "chargeBid", "dischargeBid");
+
     }
 }
-
-

@@ -3,10 +3,11 @@ package agents;
 import jade.core.Agent;
 import jade.core.behaviours.CyclicBehaviour;
 import jade.lang.acl.ACLMessage;
+import org.json.JSONArray;
+import org.json.JSONObject;
 
 import java.text.DecimalFormat;
 import java.util.*;
-import java.util.regex.*;
 
 public class SMA1 extends Agent {
 
@@ -40,7 +41,7 @@ public class SMA1 extends Agent {
                 if (msg.getPerformative() == ACLMessage.INFORM) {
                     if (sender.equals("MACA1")) {
                         System.out.println(getLocalName() + ": Received unmatched bid(s) from MACA1:\n" + content);
-                        List<RemainingInfo> parsedInfos = parseMessages(content); // 保留原MACA解析方法
+                        List<RemainingInfo> parsedInfos = parseMessagesFromMACA1(content); // 解析 MACA1 的 JSON 消息
                         if (!parsedInfos.isEmpty()) {
                             remainingBids.addAll(parsedInfos);
                             printRemainingBids();
@@ -66,20 +67,75 @@ public class SMA1 extends Agent {
             }
         }
     }
+
     /**
-     * 向储能代理发送市场状态信息
+     * 解析来自 MACA1 的 JSON 消息
      */
-    private void sendToStorageAgents(String content) {
-        String[] storageAgents = {"StrA_ESSout_2A", "StrA_ESSout_3A"};
+    private List<RemainingInfo> parseMessagesFromMACA1(String content) {
+        List<RemainingInfo> parsedInfos = new ArrayList<>();
+        try {
+            JSONObject jsonObject = new JSONObject(content); // 解析为 JSONObject
+            JSONArray jsonArray = jsonObject.getJSONArray("remainingBids"); // 获取 "remainingBids" 数组
+
+            for (int i = 0; i < jsonArray.length(); i++) {
+                JSONObject json = jsonArray.getJSONObject(i);
+                String agentName = json.getString("agent"); // 获取代理名称
+                double remainingAmount = json.getDouble("remaining"); // 获取剩余量
+                double price = json.getDouble("price"); // 获取价格
+                String type = json.getString("type"); // 获取类型（负载/发电）
+
+                // 根据消息中的 type 字段，决定是否存储这个信息
+                if (type.equals("load") || type.equals("generation")) {
+                    RemainingInfo info = new RemainingInfo(agentName, remainingAmount, price);
+                    parsedInfos.add(info); // 将解析的结果加入列表
+
+                    System.out.println(getLocalName() + ": Parsed -> Agent: " + agentName + ", Remaining: " + remainingAmount + " kWh, Price: " + price + " $/kWh, Type: " + type);
+                }
+            }
+        } catch (Exception e) {
+            System.err.println(getLocalName() + ": Error parsing JSON from MACA1: " + content);
+            e.printStackTrace();
+        }
+        return parsedInfos;
+    }
+
+
+    /**
+     * 向储能代理发送市场状态信息（JSON 格式）
+     */
+    private void sendToStorageAgents(String marketState, double deltaP, double predictedPrice) {
+        String[] storageAgents = {"StrA_ESSlocal_1","StrA_ESSout_2A", "StrA_ESSout_3A"};
+
+        JSONObject json = new JSONObject();
+        json.put("market_state", marketState);
+        json.put("delta_p", deltaP);
+        json.put("predicted_price", predictedPrice);
 
         for (String agent : storageAgents) {
             ACLMessage msg = new ACLMessage(ACLMessage.INFORM);
             msg.addReceiver(getAID(agent));
-            msg.setContent(content);
+            msg.setContent(json.toString());
             send(msg);
 
-            System.out.println(getLocalName() + ": Sent to " + agent + " -> " + content);
+            System.out.println(getLocalName() + ": Sent to " + agent + " -> " + json.toString(2));
         }
+    }
+
+    /**
+     * 解析来自储能代理的 JSON 消息
+     */
+    private RemainingInfo parseStorageBid(String sender, String content) {
+        try {
+            JSONObject json = new JSONObject(content);
+            double remainingAmount = json.getDouble("available_capacity");
+            double price = json.getDouble("bid_price");
+
+            return new RemainingInfo(sender, remainingAmount, price);
+        } catch (Exception e) {
+            System.err.println(getLocalName() + ": Error parsing JSON from " + sender + ": " + content);
+            e.printStackTrace();
+        }
+        return null;
     }
 
     /**
@@ -95,6 +151,16 @@ public class SMA1 extends Agent {
             List<RemainingInfo> sellers = new ArrayList<>(storageAgentBids.values());
             sellers.sort(Comparator.comparingDouble(info -> info.price)); // 按卖方出价从低到高排序
 
+            System.out.println(getLocalName() + ": Current Buyers (sorted by highest price):");
+            for (RemainingInfo buyer : remainingBids) {
+                System.out.println("  Buyer: " + buyer.agentName + ", Price: " + buyer.price + ", Remaining: " + buyer.remainingAmount);
+            }
+
+            System.out.println(getLocalName() + ": Current Sellers (sorted by lowest price):");
+            for (RemainingInfo seller : sellers) {
+                System.out.println("  Seller: " + seller.agentName + ", Price: " + seller.price + ", Remaining: " + seller.remainingAmount);
+            }
+
             // 如果买方或卖方为空，则终止拍卖
             if (remainingBids.isEmpty() || sellers.isEmpty()) {
                 break;
@@ -109,14 +175,18 @@ public class SMA1 extends Agent {
             double secondPrice = sellers.size() > 1 ? sellers.get(1).price : seller.price;
             double price = Math.max(buyer.price, secondPrice);
 
+            System.out.println(getLocalName() + ": Transaction -> Buyer: " + buyer.agentName + " buys from Seller: " + seller.agentName + ", Volume: " + tradedAmount + ", Price: " + price);
+
             // 更新买方和卖方剩余量
             buyer.remainingAmount -= tradedAmount;
             seller.remainingAmount -= tradedAmount;
 
             if (buyer.remainingAmount == 0) {
+                System.out.println(getLocalName() + ": Buyer " + buyer.agentName + " has fulfilled their demand.");
                 remainingBids.remove(0);
             }
             if (seller.remainingAmount == 0) {
+                System.out.println(getLocalName() + ": Seller " + seller.agentName + " has sold out.");
                 storageAgentBids.remove(seller.agentName);
             }
 
@@ -127,37 +197,60 @@ public class SMA1 extends Agent {
             auctionResults.computeIfAbsent(seller.agentName, k -> new AuctionResult()).addResult(tradedAmount, price);
         }
 
+        System.out.println(getLocalName() + ": Auction completed. Summary of transactions:");
+        for (AuctionRecord record : auctionRecords) {
+            System.out.println("  Buyer: " + record.buyer + " - Seller: " + record.seller + " - Volume: " + record.volume + " - Price: " + record.price);
+        }
+
         // 将拍卖结果发送给储能代理和数据收集代理
         sendAuctionResultsToStorageAgents();
         sendAuctionRecordsToDataCollect(auctionRecords);
     }
 
+
     /**
-     * 解析来自 MACA1 的多条消息内容
+     * 发送拍卖结果给储能代理（JSON 格式）
      */
-    private List<RemainingInfo> parseMessages(String content) {
-        List<RemainingInfo> parsedInfos = new ArrayList<>();
-        try {
-            Pattern pattern = Pattern.compile("Agent: ([^,]+), Remaining: ([0-9]+(?:\\.[0-9]+)?) kWh, Price: ([0-9]+(?:\\.[0-9]+)?)");
-            Matcher matcher = pattern.matcher(content);
+    private void sendAuctionResultsToStorageAgents() {
+        for (Map.Entry<String, AuctionResult> entry : auctionResults.entrySet()) {
+            String agentName = entry.getKey();
+            AuctionResult result = entry.getValue();
 
-            while (matcher.find()) {
-                String agentName = matcher.group(1);
-                double remainingAmount = Double.parseDouble(matcher.group(2));
-                double price = Double.parseDouble(matcher.group(3));
+            JSONObject json = new JSONObject();
+            json.put("total_volume", result.totalVolume);
+            json.put("total_revenue", result.totalRevenue);
 
-                RemainingInfo info = new RemainingInfo(agentName, remainingAmount, price);
-                parsedInfos.add(info);
+            ACLMessage msg = new ACLMessage(ACLMessage.INFORM);
+            msg.addReceiver(getAID(agentName));
+            msg.setContent(json.toString());
+            send(msg);
 
-                System.out.println(getLocalName() + ": Parsed -> Agent: " + agentName + ", Remaining: " + remainingAmount + " kWh, Price: " + price + " $/kWh");
-            }
-
-        } catch (Exception e) {
-            System.err.println(getLocalName() + ": Error parsing messages: " + content);
-            e.printStackTrace();
+            System.out.println(getLocalName() + ": Sent auction results to " + agentName + ": " + json.toString(2));
         }
-        return parsedInfos;
     }
+
+    /**
+     * 发送拍卖记录给数据收集代理（JSON 格式）
+     */
+    private void sendAuctionRecordsToDataCollect(List<AuctionRecord> records) {
+        JSONArray jsonArray = new JSONArray();
+        for (AuctionRecord record : records) {
+            JSONObject json = new JSONObject();
+            json.put("buyer", record.buyer);
+            json.put("seller", record.seller);
+            json.put("volume", record.volume);
+            json.put("price", record.price);
+            jsonArray.put(json);
+        }
+
+        ACLMessage msg = new ACLMessage(ACLMessage.INFORM);
+        msg.addReceiver(getAID("data_collect"));
+        msg.setContent(jsonArray.toString());
+        send(msg);
+
+        System.out.println(getLocalName() + ": Sent auction records to data_collect:\n" + jsonArray.toString(2));
+    }
+
     /**
      * 分析剩余信息，确定市场状态并通知储能代理
      */
@@ -175,50 +268,10 @@ public class SMA1 extends Agent {
         double deltaP = totalSupply - totalDemand;
         double predictedPrice = C0 + C1 * deltaP;
 
-        String marketState = deltaP > 0 ? "Surplus" : "Demand";
+        String marketState = deltaP > 0 ? "generation" : "load";
 
-        String messageContent = String.format("Market State: %s, ΔP: %.2f kWh, Predicted Price: %.2f $/kWh",
-                marketState, deltaP, predictedPrice);
-        sendToStorageAgents(messageContent);
-    }
-
-    /**
-     * 解析来自储能代理的出价
-     */
-    private RemainingInfo parseStorageBid(String sender, String content) {
-        try {
-            Pattern pattern = Pattern.compile("Capacity: ([0-9]+(?:\\.[0-9]+)?) kWh, Price: ([0-9]+(?:\\.[0-9]+)?)");
-            Matcher matcher = pattern.matcher(content);
-
-            if (matcher.find()) {
-                double remainingAmount = Double.parseDouble(matcher.group(1));
-                double price = Double.parseDouble(matcher.group(2));
-                return new RemainingInfo(sender, remainingAmount, price);
-            }
-        } catch (Exception e) {
-            System.err.println(getLocalName() + ": Error parsing bid from " + sender + ": " + content);
-            e.printStackTrace();
-        }
-        return null;
-    }
-
-    /**
-     * 发送拍卖结果给储能代理
-     */
-    private void sendAuctionResultsToStorageAgents() {
-        for (Map.Entry<String, AuctionResult> entry : auctionResults.entrySet()) {
-            String agentName = entry.getKey();
-            AuctionResult result = entry.getValue();
-
-            ACLMessage msg = new ACLMessage(ACLMessage.INFORM);
-            msg.addReceiver(getAID(agentName));
-            msg.setContent("Auction Results: Total Volume: " + df.format(result.totalVolume)
-                    + " kWh, Total Revenue: " + df.format(result.totalRevenue) + " $");
-            send(msg);
-
-            System.out.println(getLocalName() + ": Sent auction results to " + agentName + ": Total Volume: "
-                    + df.format(result.totalVolume) + " kWh, Total Revenue: " + df.format(result.totalRevenue) + " $");
-        }
+        // 发送市场状态信息给储能代理
+        sendToStorageAgents(marketState, deltaP, predictedPrice);
     }
 
     /**
@@ -233,26 +286,6 @@ public class SMA1 extends Agent {
                 System.out.println(getLocalName() + ": Agent: " + info.agentName + ", Remaining: " + info.remainingAmount + " kWh, Price: " + info.price + " $/kWh");
             }
         }
-    }
-
-    /**
-     * 发送拍卖记录给数据收集代理
-     */
-    private void sendAuctionRecordsToDataCollect(List<AuctionRecord> records) {
-        ACLMessage msg = new ACLMessage(ACLMessage.INFORM);
-        msg.addReceiver(getAID("data_collect"));
-
-        StringBuilder content = new StringBuilder();
-        for (AuctionRecord record : records) {
-            content.append("Buyer: ").append(record.buyer)
-                    .append(", Seller: ").append(record.seller)
-                    .append(", Volume: ").append(df.format(record.volume))
-                    .append(" kWh, Price: ").append(df.format(record.price)).append(" $/kWh\n");
-        }
-        msg.setContent(content.toString());
-        send(msg);
-
-        System.out.println(getLocalName() + ": Sent auction records to data_collect:\n" + content);
     }
 
     /**
@@ -295,8 +328,8 @@ public class SMA1 extends Agent {
         double totalRevenue;
 
         void addResult(double volume, double price) {
-            totalVolume += volume;
-            totalRevenue += volume * price;
+            totalVolume = volume;
+            totalRevenue = volume * price;
         }
     }
 }

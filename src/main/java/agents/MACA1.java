@@ -4,6 +4,8 @@ import jade.core.Agent;
 import jade.core.behaviours.CyclicBehaviour;
 import jade.lang.acl.ACLMessage;
 import org.json.JSONObject;
+import org.json.JSONArray;
+
 
 import java.util.*;
 import java.text.DecimalFormat;
@@ -162,7 +164,14 @@ public class MACA1 extends Agent {
                 msg.addReceiver(new jade.core.AID(SMA_AGENT, jade.core.AID.ISLOCALNAME));
 
                 JSONObject json = new JSONObject();
-                json.put("remainingBids", remainingBidsOutput);
+                JSONArray remainingBidsArray = new JSONArray();
+
+                for (String bidString : remainingBidsOutput) {
+                    remainingBidsArray.put(new JSONObject(bidString)); // 将字符串转换成 JSON 对象
+                }
+
+                json.put("remainingBids", remainingBidsArray); // 存入 JSONArray，而不是 List<String>
+
 
                 msg.setContent(json.toString());
                 send(msg);
