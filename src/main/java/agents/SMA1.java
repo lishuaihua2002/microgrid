@@ -142,83 +142,79 @@ public class SMA1 extends Agent {
      * 广义第二价格拍卖
      */
     private void executeAuction() {
-        System.out.println(getLocalName() + ": Starting auction...");
+        System.out.println(getLocalName() + ": Starting auction with updated rules...");
         List<AuctionRecord> auctionRecords = new ArrayList<>();
 
-        while (!remainingBids.isEmpty() && !storageAgentBids.isEmpty()) {
-            // 获取买方和卖方的排序
-            remainingBids.sort(Comparator.comparingDouble(info -> -info.price)); // 按买方出价从高到低排序
-            List<RemainingInfo> sellers = new ArrayList<>(storageAgentBids.values());
-            sellers.sort(Comparator.comparingDouble(info -> info.price)); // 按卖方出价从低到高排序
+        boolean isDGAsSeller = remainingBids.stream().allMatch(info -> info.agentName.contains("DG"));
+        List<RemainingInfo> buyers = isDGAsSeller ? new ArrayList<>(storageAgentBids.values()) : new ArrayList<>(remainingBids);
+        List<RemainingInfo> sellers = isDGAsSeller ? new ArrayList<>(remainingBids) : new ArrayList<>(storageAgentBids.values());
 
-            System.out.println(getLocalName() + ": Current Buyers (sorted by highest price):");
-            for (RemainingInfo buyer : remainingBids) {
-                System.out.println("  Buyer: " + buyer.agentName + ", Price: " + buyer.price + ", Remaining: " + buyer.remainingAmount);
-            }
+        buyers.sort(Comparator.comparingDouble(info -> -info.price)); // 买方按价格降序排列
+        sellers.sort(Comparator.comparingDouble(info -> info.price)); // 卖方按价格升序排列
 
-            System.out.println(getLocalName() + ": Current Sellers (sorted by lowest price):");
-            for (RemainingInfo seller : sellers) {
-                System.out.println("  Seller: " + seller.agentName + ", Price: " + seller.price + ", Remaining: " + seller.remainingAmount);
-            }
+        while (!buyers.isEmpty() && !sellers.isEmpty()) {
+            RemainingInfo buyer = buyers.get(0);  // 当前最高出价的买方
+            RemainingInfo seller = sellers.get(0);  // 当前最低出价的卖方
 
-            // 如果买方或卖方为空，则终止拍卖
-            if (remainingBids.isEmpty() || sellers.isEmpty()) {
-                break;
-            }
-
-            // 获取最高出价的买方和最低出价的卖方
-            RemainingInfo buyer = remainingBids.get(0);
-            RemainingInfo seller = sellers.get(0);
-
-            // 计算交易量和交易价格
             double tradedAmount = Math.min(buyer.remainingAmount, seller.remainingAmount);
-            double secondPrice = sellers.size() > 1 ? sellers.get(1).price : seller.price;
-            double price = Math.max(buyer.price, secondPrice);
 
-            System.out.println(getLocalName() + ": Transaction -> Buyer: " + buyer.agentName + " buys from Seller: " + seller.agentName + ", Volume: " + tradedAmount + ", Price: " + price);
+            // 根据储能代理的角色确定第二价格
+            double secondPrice;
+            if (isDGAsSeller) {
+                // 如果储能代理是买方，第二价格来自买方列表中的第二个元素（如果存在）
+                secondPrice = buyers.size() > 1 ? buyers.get(1).price : buyer.price;
+            } else {
+                // 如果储能代理是卖方，第二价格来自卖方列表中的第二个元素（如果存在）
+                secondPrice = sellers.size() > 1 ? sellers.get(1).price : seller.price;
+            }
 
-            // 更新买方和卖方剩余量
+            // 交易价格为储能代理的第二价格和当前交易方价格的平均值
+            double transactionPrice;
+            if (isDGAsSeller) {
+                // 如果储能代理是买方，当前交易方价格取卖方价格
+                transactionPrice = (secondPrice + seller.price) / 2;
+            } else {
+                // 如果储能代理是卖方，当前交易方价格取买方价格
+                transactionPrice = (secondPrice + buyer.price) / 2;
+            }
+
+            System.out.println(getLocalName() + ": Transaction -> Buyer: " + buyer.agentName + " buys from Seller: " + seller.agentName + ", Volume: " + tradedAmount + ", Price: " + transactionPrice);
+
+            // 更新买卖双方的剩余量
             buyer.remainingAmount -= tradedAmount;
             seller.remainingAmount -= tradedAmount;
 
-            if (buyer.remainingAmount == 0) {
-                System.out.println(getLocalName() + ": Buyer " + buyer.agentName + " has fulfilled their demand.");
-                remainingBids.remove(0);
-            }
-            if (seller.remainingAmount == 0) {
-                System.out.println(getLocalName() + ": Seller " + seller.agentName + " has sold out.");
-                storageAgentBids.remove(seller.agentName);
-            }
+            // 如果剩余量为0，移除当前买卖方
+            if (buyer.remainingAmount == 0) buyers.remove(0);
+            if (seller.remainingAmount == 0) sellers.remove(0);
 
-            // 记录交易
-            auctionRecords.add(new AuctionRecord(buyer.agentName, seller.agentName, tradedAmount, price));
-
-            // 更新拍卖结果
-            auctionResults.computeIfAbsent(seller.agentName, k -> new AuctionResult()).addResult(tradedAmount, price);
+            // 记录交易信息
+            auctionRecords.add(new AuctionRecord(buyer.agentName, seller.agentName, tradedAmount, transactionPrice));
         }
-
         System.out.println(getLocalName() + ": Auction completed. Summary of transactions:");
         for (AuctionRecord record : auctionRecords) {
             System.out.println("  Buyer: " + record.buyer + " - Seller: " + record.seller + " - Volume: " + record.volume + " - Price: " + record.price);
         }
 
-        // 将拍卖结果发送给储能代理和数据收集代理
-        sendAuctionResultsToStorageAgents();
+        sendAuctionResultsToStorageAgents(isDGAsSeller);
         sendAuctionRecordsToDataCollect(auctionRecords);
     }
-
 
     /**
      * 发送拍卖结果给储能代理（JSON 格式）
      */
-    private void sendAuctionResultsToStorageAgents() {
+    private void sendAuctionResultsToStorageAgents(boolean isDGAsSeller) {
         for (Map.Entry<String, AuctionResult> entry : auctionResults.entrySet()) {
             String agentName = entry.getKey();
             AuctionResult result = entry.getValue();
 
+            // 根据 isDGAsSeller 处理正负
+            double adjustedVolume = isDGAsSeller ? result.totalVolume : -result.totalVolume;
+            double adjustedRevenue = isDGAsSeller ? -result.totalRevenue : result.totalRevenue;
+
             JSONObject json = new JSONObject();
-            json.put("total_volume", result.totalVolume);
-            json.put("total_revenue", result.totalRevenue);
+            json.put("total_volume", adjustedVolume);
+            json.put("total_revenue", adjustedRevenue);
 
             ACLMessage msg = new ACLMessage(ACLMessage.INFORM);
             msg.addReceiver(getAID(agentName));
