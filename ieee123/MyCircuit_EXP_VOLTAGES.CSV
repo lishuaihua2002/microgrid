@@ -1,0 +1,4 @@
+Bus, BasekV, Node1, Magnitude1, Angle1, pu1, Node2, Magnitude2, Angle2, pu2, Node3, Magnitude3, Angle3, pu3
+"SOURCEBUS", 0, 1,    8365.81,    0.0,         0, 2,    8365.81, -120.0,         0, 3,    8365.81,  120.0,         0
+"BUS1", 0, 1,          0,    0.0,         0, 2,          0,    0.0,         0, 3,          0,    0.0,         0
+"BUS2", 0, 1,          0,    0.0,         0, 2,          0,    0.0,         0, 3,          0,    0.0,         0
