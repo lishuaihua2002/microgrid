@@ -9,7 +9,7 @@ public class TestOpenDSSConnection {
                 System.out.println("✅ OpenDSS 启动成功");
 
                 // 关键修改 1：使用绝对路径确保模型文件可访问（示例路径需替换为你的实际路径）
-                String modelPath = "D:/develop/opendss_models/ieee123/IEEE123Master.dss";
+                String modelPath = "D:\\develop\\code_energy_platform\\energy-platform\\ieee123\\IEEE123Master.dss";
                 System.out.println("📂 尝试加载模型：" + modelPath);
 
                 bridge.loadModel(modelPath);
@@ -22,6 +22,7 @@ public class TestOpenDSSConnection {
                 System.out.println("🔧 开始执行潮流计算...");
                 bridge.solve();
                 System.out.println("✔️ 潮流计算完成");
+
 
                 // 关键修改 3：验证结果有效性
                 double totalLoss = bridge.getTotalSystemLossKW();
