@@ -1,11 +1,13 @@
 package agents;
 
+import java.util.Arrays;
 import com.myproject.opendss.*;
 import com4j.Com4jObject;
 public class OpenDSSBridge {
     private IDSS dssObj;
     private IText dssText;
     private ICircuit dssCircuit;
+    private ISolution dssSolution;
 
     // 启动 DSS 引擎
     public boolean startDSS() {
@@ -39,9 +41,16 @@ public class OpenDSSBridge {
     }
 
     // 执行潮流计算
-    public void solve() {
+    // 修改后：返回是否成功收敛
+    public boolean solve() {
         dssText.command("Solve");
+
+        // 使用 converged() 方法检查收敛性 [^3]
+        boolean isConverged = dssCircuit.solution().converged();
+        return isConverged;
     }
+
+
 
     // 设置 Generator 输出功率（kW）
     public void setGenerator(String name, double kw) {
@@ -78,7 +87,22 @@ public class OpenDSSBridge {
 
     // 获取整个系统的总有功损耗
     public double getTotalSystemLossKW() {
+        ISolution solution = dssCircuit.solution();
+        if (solution == null || !solution.converged()) {
+            throw new RuntimeException("解算未完成或未收敛");
+        }
+
+        // [!] 确保解算模式正确且强制数据刷新
+        dssText.command("Set Mode=Snap");
+        dssText.command("Solve");                     // 显式执行解算 [^1]
+        dssText.command("CalcVoltageBases");          // 确保电压基准更新 [^2]
+
         Object[] losses = (Object[]) dssCircuit.losses();
+        // === 强化空指针防御 ===
+        if (losses == null) {
+            throw new RuntimeException("损耗数据未生成，检查电源是否连接或电路状态");
+        }
+
         return ((Double) losses[0]) / 1000.0;
     }
 

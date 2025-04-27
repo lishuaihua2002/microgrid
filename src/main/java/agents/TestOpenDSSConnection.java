@@ -17,11 +17,15 @@ public class TestOpenDSSConnection {
 
                 // 关键修改 2：添加电路存在性检查（可选）
                 // 如果模型未自动创建电路，需手动创建：
-                // bridge.getDssText().call("Command", "New Circuit.MyTestCircuit");
+                //bridge.getDssText().call("Command", "New Circuit.MyTestCircuit");
 
                 System.out.println("🔧 开始执行潮流计算...");
-                bridge.solve();
-                System.out.println("✔️ 潮流计算完成");
+                if (bridge.solve()) {
+                    System.out.println("✔️ 潮流计算成功收敛");
+                } else {
+                    System.out.println("❌ 潮流未收敛，无法获取损耗");
+                    return;
+                }
 
 
                 // 关键修改 3：验证结果有效性
