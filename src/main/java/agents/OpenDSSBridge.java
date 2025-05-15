@@ -37,14 +37,16 @@ public class OpenDSSBridge {
     // 加载 .dss 模型
     public void loadModel(String modelPath) {
         dssText.command("Clear");
-        dssText.command("Redirect " + modelPath);
+        dssText.command("Compile " + modelPath);
+        dssCircuit = dssObj.activeCircuit();
+//        dssText.command("Redirect " + modelPath);
     }
 
     // 执行潮流计算
     // 修改后：返回是否成功收敛
     public boolean solve() {
-        dssText.command("Solve");
-
+//        dssText.command("Solve");
+        dssCircuit.solution().solve();
         // 使用 converged() 方法检查收敛性 [^3]
         boolean isConverged = dssCircuit.solution().converged();
         return isConverged;
